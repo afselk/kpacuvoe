@@ -17,15 +17,22 @@
 
 Все релизы: [Releases](https://github.com/afselk/kpacuvoe/releases)
 
-### Установка за 30 секунд
+### Установка
 
 1. Скачай zip из таблицы выше  
-2. Распакуй — появится **kpacuvoe.app**  
-3. Перетащи в **Applications**  
-4. Первый запуск: правый клик → **Open** (приложение пока без Apple notarization)  
+2. Распакуй → перетащи **kpacuvoe.app** в **Applications**  
+3. Сними карантин Gatekeeper (иначе macOS пишет *«damaged and can't be opened»* — это не поломка файла):
+
+```bash
+xattr -cr /Applications/kpacuvoe.app
+```
+
+4. Запусти `kpacuvoe` из Applications  
 5. Иконка сядет в **строку меню** → **Выбрать папку…**
 
 Дальше просто кидай фото/скрины в эту папку — kpacuvoe обработает и заменит файл.
+
+> Сборка без Apple notarization. Сообщение «is damaged» = карантин на скачанном файле, лечится командой выше.
 
 ---
 
