@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
 import chokidar from 'chokidar'
 import { DEFAULTS, isImageFile } from './defaults.mjs'
+import { checkForUpdate, downloadAndInstall } from './updater.mjs'
 
 const require = createRequire(import.meta.url)
 const StoreModule = require('electron-store')
@@ -300,9 +301,22 @@ function createSettingsWindow() {
 }
 
 function trayIcon() {
+  const candidates = [
+    path.join(__dirname, 'assets', 'trayTemplate.png'),
+    path.join(__dirname, 'assets', 'trayTemplate@2x.png'),
+    path.join(__dirname, '../build/trayTemplate.png'),
+  ]
+  for (const file of candidates) {
+    if (!fs.existsSync(file)) continue
+    const image = nativeImage.createFromPath(file)
+    if (image.isEmpty()) continue
+    if (process.platform === 'darwin') image.setTemplateImage(true)
+    return image
+  }
+  // Fallback SVG K
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-      <rect x="2" y="3" width="14" height="12" rx="3" fill="#ffffff"/>
+      <path fill="#ffffff" d="M4.2 2.5h3.1v5.1l4.7-5.1h3.6L9.8 8.2l5.1 7.3h-3.7L8 10.1v5.4H4.2z"/>
     </svg>`
   const image = nativeImage.createFromDataURL(
     `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
@@ -369,6 +383,15 @@ function updateTrayMenu() {
     {
       label: 'Настройки…',
       click: () => createSettingsWindow(),
+    },
+    {
+      label: 'Проверить обновления…',
+      click: () => {
+        createSettingsWindow()
+        for (const win of BrowserWindow.getAllWindows()) {
+          if (!win.isDestroyed()) win.webContents.send('kpacuvoe:request-update-check')
+        }
+      },
     },
     { type: 'separator' },
     {
@@ -454,6 +477,41 @@ function registerIpc() {
     const folder = store.get('watchFolder')
     if (!folder) return { processed: 0, failed: 0 }
     return processFolder(folder)
+  })
+
+  ipcMain.handle('kpacuvoe:get-version', () => app.getVersion())
+
+  ipcMain.handle('kpacuvoe:check-update', async () => {
+    try {
+      return await checkForUpdate()
+    } catch (error) {
+      return {
+        current: app.getVersion(),
+        latest: app.getVersion(),
+        available: false,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    }
+  })
+
+  ipcMain.handle('kpacuvoe:install-update', async (event, downloadUrl) => {
+    const sender = event.sender
+    try {
+      await downloadAndInstall({
+        downloadUrl,
+        onProgress: (progress) => {
+          if (!sender.isDestroyed()) {
+            sender.send('kpacuvoe:update-progress', progress)
+          }
+        },
+      })
+      return { ok: true }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    }
   })
 }
 

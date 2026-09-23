@@ -1,7 +1,7 @@
 {
   "name": "kpacuvoe",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "electron/main.mjs",
   "description": "Menu-bar Mac app that frames screenshots in a watched folder",
@@ -29,13 +29,6 @@
     "mac": {
       "category": "public.app-category.photography",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
         {
           "target": "zip",
           "arch": [

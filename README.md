@@ -12,8 +12,8 @@
 
 | Файл | Для кого | Что делать |
 |------|----------|------------|
-| [**kpacuvoe-1.0.0-arm64-mac.zip**](https://github.com/afselk/kpacuvoe/releases/latest/download/kpacuvoe-1.0.0-arm64-mac.zip) | Apple Silicon (M1–M4) | Распаковать → перетащить `kpacuvoe.app` в **Applications** |
-| [**kpacuvoe-1.0.0-mac.zip**](https://github.com/afselk/kpacuvoe/releases/latest/download/kpacuvoe-1.0.0-mac.zip) | Intel Mac | То же самое |
+| [**kpacuvoe-1.1.0-arm64-mac.zip**](https://github.com/afselk/kpacuvoe/releases/latest/download/kpacuvoe-1.1.0-arm64-mac.zip) | Apple Silicon (M1–M4) | Распаковать → перетащить `kpacuvoe.app` в **Applications** |
+| [**kpacuvoe-1.1.0-mac.zip**](https://github.com/afselk/kpacuvoe/releases/latest/download/kpacuvoe-1.1.0-mac.zip) | Intel Mac | То же самое |
 
 Все релизы: [Releases](https://github.com/afselk/kpacuvoe/releases)
 
@@ -33,6 +33,8 @@ xattr -cr /Applications/kpacuvoe.app
 Дальше просто кидай фото/скрины в эту папку — kpacuvoe обработает и заменит файл.
 
 > Сборка без Apple notarization. Сообщение «is damaged» = карантин на скачанном файле, лечится командой выше.
+>
+> Дальше обновления ставятся из приложения: **Настройки → Обновить** (или пункт в трее).
 
 ---
 

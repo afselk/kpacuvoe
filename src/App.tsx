@@ -16,7 +16,7 @@ import {
   type ProcessResult,
 } from './lib/processImage'
 import { rgbToCss } from './lib/palette'
-import type { KpacuvoeSettings } from './kpacuvoe-desktop'
+import type { KpacuvoeSettings, KpacuvoeUpdateInfo } from './kpacuvoe-desktop'
 
 const DEFAULTS = {
   radius: 30,
@@ -75,6 +75,11 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const [watchFolder, setWatchFolder] = useState<string | null>(null)
   const [folderStatus, setFolderStatus] = useState<string | null>(null)
+  const [appVersion, setAppVersion] = useState<string>('')
+  const [updateInfo, setUpdateInfo] = useState<KpacuvoeUpdateInfo | null>(null)
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null)
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null)
+  const [updating, setUpdating] = useState(false)
 
   const [radius, setRadius] = useState(DEFAULTS.radius)
   const [padding, setPadding] = useState(DEFAULTS.padding)
@@ -101,6 +106,38 @@ export default function App() {
     })
     return desktop.onSettings(applySettings)
   }, [desktop, applySettings])
+
+  useEffect(() => {
+    if (!desktop) return
+    void desktop.getVersion().then(setAppVersion)
+    return desktop.onUpdateProgress((progress) => setUpdateProgress(progress))
+  }, [desktop])
+
+  const runUpdateCheck = useCallback(async () => {
+    if (!desktop) {
+      setUpdateStatus('Обновления доступны только в приложении')
+      return
+    }
+    setUpdateStatus('Проверяю…')
+    setUpdateInfo(null)
+    setUpdateProgress(null)
+    try {
+      const info = await desktop.checkUpdate()
+      setUpdateInfo(info)
+      if (info.error) setUpdateStatus(info.error)
+      else if (info.available) setUpdateStatus(`Доступна ${info.latest}`)
+      else setUpdateStatus(`Уже последняя (${info.current})`)
+    } catch (e) {
+      setUpdateStatus(e instanceof Error ? e.message : 'Ошибка проверки')
+    }
+  }, [desktop])
+
+  useEffect(() => {
+    if (!desktop?.onRequestUpdateCheck) return
+    return desktop.onRequestUpdateCheck(() => {
+      void runUpdateCheck()
+    })
+  }, [desktop, runUpdateCheck])
 
   useEffect(() => {
     if (!desktop || !hydrated) return
@@ -490,6 +527,53 @@ export default function App() {
                   />
                 </label>
               </>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="font-[family-name:'Bricolage_Grotesque',sans-serif] text-lg font-semibold text-[var(--fog)]">
+              Обновления
+            </h2>
+            <p className="text-xs text-[var(--mist)]">
+              Версия {appVersion || '…'}
+              {updateInfo?.available ? ` → ${updateInfo.latest}` : ''}
+            </p>
+            <div className="grid gap-2">
+              <button
+                type="button"
+                disabled={!desktop || updating}
+                onClick={() => void runUpdateCheck()}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm text-[var(--fog)] transition hover:border-[var(--mint)]/40 hover:bg-white/[0.04] disabled:opacity-40"
+              >
+                Проверить обновления
+              </button>
+              <button
+                type="button"
+                disabled={!desktop || updating || !updateInfo?.available || !updateInfo.downloadUrl}
+                onClick={() => {
+                  void (async () => {
+                    if (!desktop || !updateInfo?.downloadUrl) return
+                    setUpdating(true)
+                    setUpdateStatus('Скачиваю и ставлю…')
+                    setUpdateProgress(0)
+                    const result = await desktop.installUpdate(updateInfo.downloadUrl)
+                    if (!result.ok) {
+                      setUpdating(false)
+                      setUpdateStatus(result.error || 'Не удалось обновить')
+                    } else {
+                      setUpdateStatus('Перезапускаю…')
+                    }
+                  })()
+                }}
+                className="rounded-xl bg-[var(--mint)] px-3 py-2.5 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--spark)] disabled:opacity-40"
+              >
+                {updating
+                  ? `Обновляю${updateProgress != null ? ` ${Math.round(updateProgress * 100)}%` : '…'}`
+                  : 'Обновить'}
+              </button>
+            </div>
+            {updateStatus && (
+              <p className="text-xs text-[var(--mint)]">{updateStatus}</p>
             )}
           </div>
 
