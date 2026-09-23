@@ -211,24 +211,48 @@ export default function App() {
           />
 
           {!result ? (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex flex-1 cursor-pointer flex-col items-center justify-center gap-4 px-6 text-center transition hover:bg-white/[0.02]"
-            >
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--mint)]/30 bg-[var(--glow)] text-2xl text-[var(--mint)]">
-                ⌘V
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-[var(--fog)]">
-                  Брось скриншот сюда или вставь из буфера
-                </p>
-                <p className="mt-2 text-sm text-[var(--mist)]">
-                  На Mac: <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">⌘⌃⇧4</kbd>
-                  {' '}→ буфер, затем вставь. Или перетащи файл с рабочего стола.
-                </p>
-              </div>
-            </button>
+            <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl px-4 py-6 transition hover:bg-white/[0.02]"
+              >
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[var(--mint)]/30 bg-[var(--glow)] text-2xl text-[var(--mint)]">
+                  ⌘V
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-[var(--fog)]">
+                    Брось скриншот сюда или вставь из буфера
+                  </p>
+                  <p className="mt-2 max-w-md text-sm text-[var(--mist)]">
+                    На Mac:{' '}
+                    <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">⌘⌃⇧4</kbd>
+                    {' '}→ буфер, затем вставь. Или перетащи файл с рабочего стола.
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    try {
+                      setBusy(true)
+                      setError(null)
+                      const res = await fetch(`${import.meta.env.BASE_URL}sample-shot.png`)
+                      if (!res.ok) throw new Error('Пример не найден')
+                      const blob = await res.blob()
+                      await ingestFile(blob, 'sample-shot')
+                    } catch (e) {
+                      setBusy(false)
+                      setError(e instanceof Error ? e.message : 'Не удалось загрузить пример')
+                    }
+                  })()
+                }}
+                className="rounded-xl border border-[var(--line)] px-4 py-2 text-sm text-[var(--fog)] transition hover:border-[var(--mint)]/40 hover:bg-white/[0.04]"
+              >
+                Попробовать на примере
+              </button>
+            </div>
           ) : (
             <div className="flex flex-1 flex-col">
               <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3 sm:px-5">
