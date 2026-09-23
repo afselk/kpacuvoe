@@ -16,14 +16,16 @@ import {
   type ProcessResult,
 } from './lib/processImage'
 import { rgbToCss } from './lib/palette'
+import type { KpacuvoeSettings } from './kpacuvoe-desktop'
 
 const DEFAULTS = {
-  radius: 20,
-  padding: 20,
-  mode: 'gradient' as FrameMode,
+  radius: 30,
+  padding: 30,
+  mode: 'shadow' as FrameMode,
   borderWidth: 1.5,
-  shadowBlur: 28,
+  shadowBlur: 30,
   shadowOffsetY: 14,
+  transparentBg: false,
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -55,22 +57,65 @@ function ControlRow({
   )
 }
 
+function shortFolder(folder: string | null) {
+  if (!folder) return 'не выбрана'
+  return folder
+}
+
 export default function App() {
   const inputId = useId()
   const fileRef = useRef<HTMLInputElement>(null)
+  const desktop = typeof window !== 'undefined' ? window.kpacuvoeDesktop : undefined
+  const [hydrated, setHydrated] = useState(!desktop)
   const [sourceUrl, setSourceUrl] = useState<string | null>(null)
   const [sourceName, setSourceName] = useState('screenshot')
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [watchFolder, setWatchFolder] = useState<string | null>(null)
+  const [folderStatus, setFolderStatus] = useState<string | null>(null)
 
   const [radius, setRadius] = useState(DEFAULTS.radius)
   const [padding, setPadding] = useState(DEFAULTS.padding)
   const [mode, setMode] = useState<FrameMode>(DEFAULTS.mode)
   const [borderWidth, setBorderWidth] = useState(DEFAULTS.borderWidth)
   const [shadowBlur, setShadowBlur] = useState(DEFAULTS.shadowBlur)
-  const [transparentBg, setTransparentBg] = useState(true)
+  const [transparentBg, setTransparentBg] = useState(DEFAULTS.transparentBg)
+
+  const applySettings = useCallback((settings: KpacuvoeSettings) => {
+    setWatchFolder(settings.watchFolder)
+    setRadius(settings.radius)
+    setPadding(settings.padding)
+    setMode(settings.mode)
+    setBorderWidth(settings.borderWidth)
+    setShadowBlur(settings.shadowBlur)
+    setTransparentBg(settings.transparentBg)
+  }, [])
+
+  useEffect(() => {
+    if (!desktop) return
+    void desktop.getSettings().then((settings) => {
+      applySettings(settings)
+      setHydrated(true)
+    })
+    return desktop.onSettings(applySettings)
+  }, [desktop, applySettings])
+
+  useEffect(() => {
+    if (!desktop || !hydrated) return
+    const handle = window.setTimeout(() => {
+      void desktop.setSettings({
+        radius,
+        padding,
+        mode,
+        borderWidth,
+        shadowBlur,
+        transparentBg,
+      })
+    }, 120)
+    return () => window.clearTimeout(handle)
+  }, [desktop, hydrated, radius, padding, mode, borderWidth, shadowBlur, transparentBg])
 
   const ingestFile = useCallback(async (file: File | Blob, name?: string) => {
     if (!file.type.startsWith('image/')) {
@@ -82,7 +127,10 @@ export default function App() {
     try {
       const url = await fileToDataUrl(file)
       setSourceUrl(url)
-      setSourceName((name ?? (file instanceof File ? file.name : 'screenshot')).replace(/\.[^.]+$/, '') || 'screenshot')
+      setSourceName(
+        (name ?? (file instanceof File ? file.name : 'screenshot')).replace(/\.[^.]+$/, '') ||
+          'screenshot',
+      )
     } catch (e) {
       setBusy(false)
       setError(e instanceof Error ? e.message : 'Ошибка чтения файла')
@@ -146,16 +194,6 @@ export default function App() {
     return () => window.removeEventListener('paste', onPaste)
   }, [ingestFile])
 
-  useEffect(() => {
-    const api = window.softshotDesktop
-    if (!api) return
-    return api.onImageDataUrl((dataUrl) => {
-      setError(null)
-      setSourceName('desktop-shot')
-      setSourceUrl(dataUrl)
-    })
-  }, [])
-
   const onDrop = (event: DragEvent) => {
     event.preventDefault()
     setDragging(false)
@@ -173,16 +211,16 @@ export default function App() {
     <div className="mx-auto flex min-h-dvh max-w-6xl flex-col px-5 pb-10 pt-8 sm:px-8 sm:pt-12">
       <header className="rise-in mb-8 max-w-2xl sm:mb-10">
         <p className="mb-3 text-xs font-semibold tracking-[0.22em] text-[var(--mint)] uppercase">
-          для Mac · скриншоты
+          меню‑бар · папка на автомате
         </p>
-        <h1 className="font-[family-name:var(--font-brand)] text-5xl leading-none tracking-tight sm:text-6xl md:text-7xl">
+        <h1 className="text-5xl leading-none tracking-tight sm:text-6xl md:text-7xl">
           <span className="brand-sheen font-[family-name:'Bricolage_Grotesque',sans-serif] font-bold">
-            SoftShot
+            kpacuvoe
           </span>
         </h1>
-        <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--mist)] sm:text-lg">
-          Скругляет углы, дорисовывает паддинг градиентом из палитры кадра или
-          добавляет обводку с тенью — чтобы скрин выглядел объёмно.
+        <p className="mt-4 max-w-lg text-base leading-relaxed text-[var(--mist)] sm:text-lg">
+          Висит в трее, следит за выбранной папкой и сразу обрамляет новые фото:
+          скругление, паддинг и тень. Оригинал в папке заменяется результатом.
         </p>
       </header>
 
@@ -222,12 +260,11 @@ export default function App() {
                 </div>
                 <div>
                   <p className="text-lg font-semibold text-[var(--fog)]">
-                    Брось скриншот сюда или вставь из буфера
+                    Превью: брось фото сюда или вставь из буфера
                   </p>
                   <p className="mt-2 max-w-md text-sm text-[var(--mist)]">
-                    На Mac:{' '}
-                    <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">⌘⌃⇧4</kbd>
-                    {' '}→ буфер, затем вставь. Или перетащи файл с рабочего стола.
+                    Основной режим — автообработка папки из трея. Здесь можно
+                    подкрутить вид на одном кадре.
                   </p>
                 </div>
               </button>
@@ -275,7 +312,9 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => result && downloadBlob(result.blob, `${sourceName}-softshot.png`)}
+                    onClick={() =>
+                      result && downloadBlob(result.blob, `${sourceName}-kpacuvoe.png`)
+                    }
                     className="rounded-xl bg-[var(--mint)] px-3 py-2 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--spark)]"
                   >
                     Скачать PNG
@@ -295,14 +334,16 @@ export default function App() {
               {result.palette && (
                 <div className="flex items-center gap-2 border-t border-[var(--line)] px-4 py-3 sm:px-5">
                   <span className="text-xs text-[var(--mist)]">Палитра</span>
-                  {[result.palette.start, result.palette.mid, result.palette.end].map((c, i) => (
-                    <span
-                      key={i}
-                      className="h-5 w-5 rounded-full border border-white/15"
-                      style={{ background: rgbToCss(c) }}
-                      title={rgbToCss(c)}
-                    />
-                  ))}
+                  {[result.palette.start, result.palette.mid, result.palette.end].map(
+                    (c, i) => (
+                      <span
+                        key={i}
+                        className="h-5 w-5 rounded-full border border-white/15"
+                        style={{ background: rgbToCss(c) }}
+                        title={rgbToCss(c)}
+                      />
+                    ),
+                  )}
                 </div>
               )}
             </div>
@@ -313,6 +354,56 @@ export default function App() {
           className="rise-in space-y-6 rounded-[28px] border border-[var(--line)] bg-[rgba(12,18,16,0.55)] p-5 backdrop-blur-md sm:p-6"
           style={{ animationDelay: '140ms' }}
         >
+          <div className="space-y-3">
+            <h2 className="font-[family-name:'Bricolage_Grotesque',sans-serif] text-lg font-semibold text-[var(--fog)]">
+              Папка
+            </h2>
+            <p className="break-all text-xs leading-relaxed text-[var(--mist)]">
+              {shortFolder(watchFolder)}
+            </p>
+            <div className="grid gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    if (!desktop) {
+                      setError('Выбор папки доступен в приложении kpacuvoe, не в браузере')
+                      return
+                    }
+                    setFolderStatus('Выбираю папку…')
+                    const folder = await desktop.chooseFolder()
+                    setFolderStatus(
+                      folder ? 'Папка подключена, фото обработаны' : 'Отменено',
+                    )
+                  })()
+                }}
+                className="rounded-xl bg-[var(--mint)] px-3 py-2.5 text-sm font-semibold text-[var(--ink)] transition hover:bg-[var(--spark)]"
+              >
+                Выбрать папку…
+              </button>
+              <button
+                type="button"
+                disabled={!watchFolder || !desktop}
+                onClick={() => {
+                  void (async () => {
+                    if (!desktop) return
+                    setFolderStatus('Обрабатываю…')
+                    const stats = await desktop.processFolderNow()
+                    setFolderStatus(
+                      `Готово: ${stats.processed} фото${stats.failed ? `, ошибок: ${stats.failed}` : ''}`,
+                    )
+                  })()
+                }}
+                className="rounded-xl border border-[var(--line)] px-3 py-2.5 text-sm text-[var(--fog)] transition hover:border-[var(--mint)]/40 hover:bg-white/[0.04] disabled:opacity-40"
+              >
+                Обработать сейчас
+              </button>
+            </div>
+            {folderStatus && (
+              <p className="text-xs text-[var(--mint)]">{folderStatus}</p>
+            )}
+          </div>
+
           <div>
             <h2 className="font-[family-name:'Bricolage_Grotesque',sans-serif] text-lg font-semibold text-[var(--fog)]">
               Режим
@@ -339,11 +430,6 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <p className="mt-3 text-xs leading-relaxed text-[var(--mist)]">
-              {mode === 'gradient'
-                ? 'Паддинг заливается градиентом из цветов краёв скриншота.'
-                : 'Обводка и мягкая тень — скрин «лежит» на фоне объёмно.'}
-            </p>
           </div>
 
           <div className="space-y-5">
@@ -408,15 +494,11 @@ export default function App() {
           </div>
 
           <div className="rounded-2xl border border-[var(--line)] bg-black/20 p-4 text-xs leading-relaxed text-[var(--mist)]">
-            <p className="font-medium text-[var(--fog)]">Быстрый флоу на Mac</p>
+            <p className="font-medium text-[var(--fog)]">Как работает</p>
             <ol className="mt-2 list-decimal space-y-1 pl-4">
-              <li>
-                Сними область в буфер: <span className="text-[var(--fog)]">⌘⌃⇧4</span>
-              </li>
-              <li>
-                Вставь сюда: <span className="text-[var(--fog)]">⌘V</span>
-              </li>
-              <li>Скачай PNG и кидай в Notion / Slack / Figma</li>
+              <li>Выбери папку в трее или здесь</li>
+              <li>Кидай туда скрины / фото</li>
+              <li>kpacuvoe заменит файл на обработанный PNG</li>
             </ol>
           </div>
 

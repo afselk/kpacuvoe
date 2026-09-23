@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <title>kpacuvoe processor</title>
+  </head>
+  <body>
+    <script type="module">
+      import { processScreenshot } from './lib/processImage.mjs'
+
+      const api = window.kpacuvoeProcessor
+
+      api.onJob(async (job) => {
+        try {
+          const result = await processScreenshot(job.dataUrl, job.options)
+          const buffer = await result.blob.arrayBuffer()
+          api.sendResult({
+            id: job.id,
+            ok: true,
+            buffer,
+          })
+        } catch (error) {
+          api.sendResult({
+            id: job.id,
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      })
+
+      api.ready()
+    </script>
+  </body>
+</html>

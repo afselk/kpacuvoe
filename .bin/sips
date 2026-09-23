@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Minimal stub for electron-builder DMG background sizing on Linux.
+if [[ "$*" == *pixelHeight* || "$*" == *pixelWidth* ]]; then
+  echo "pixelWidth: 540"
+  echo "pixelHeight: 380"
+  exit 0
+fi
+# For other sips invocations, try to no-op successfully.
+exit 0

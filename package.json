@@ -1,10 +1,10 @@
 {
-  "name": "softshot",
+  "name": "kpacuvoe",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "main": "electron/main.mjs",
-  "description": "Mac-friendly screenshot framer with soft corners and palette gradients",
+  "description": "Menu-bar Mac app that frames screenshots in a watched folder",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 3847",
     "dev:app": "concurrently -k \"npm run dev\" \"wait-on http://127.0.0.1:3847 && electron .\"",
@@ -12,11 +12,11 @@
     "lint": "oxlint",
     "preview": "vite preview --host 127.0.0.1 --port 3847",
     "app": "npm run build && electron .",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "dist:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac"
   },
   "build": {
-    "appId": "app.softshot.desktop",
-    "productName": "SoftShot",
+    "appId": "app.kpacuvoe.desktop",
+    "productName": "kpacuvoe",
     "directories": {
       "output": "release"
     },
@@ -25,17 +25,62 @@
       "electron/**/*",
       "package.json"
     ],
+    "asar": true,
     "mac": {
       "category": "public.app-category.photography",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.icns",
+      "extendInfo": {
+        "LSUIElement": true,
+        "CFBundleName": "kpacuvoe",
+        "CFBundleDisplayName": "kpacuvoe"
+      },
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
+    },
+    "dmg": {
+      "title": "kpacuvoe",
+      "backgroundColor": "#0c1210",
+      "icon": null,
+      "contents": [
+        {
+          "x": 140,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 420,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 560,
+        "height": 380
+      }
     }
   },
   "dependencies": {
+    "chokidar": "^4.0.3",
     "clsx": "^2.1.1",
+    "electron-store": "^10.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
@@ -53,5 +98,6 @@
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "wait-on": "^9.1.0"
-  }
+  },
+  "author": "kpacuvoe"
 }
